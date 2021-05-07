@@ -1,52 +1,103 @@
-/*
- * Copyright (c) 2012-2015, Luigi R. Viggiano
- * All rights reserved.
- *
- * This software is distributable under the BSD license.
- * See the terms of the BSD license in the documentation provided with this software.
- */
-
 package org.aeonbits.owner;
+
+import static org.aeonbits.owner.Config.DisableableFeature.PREFIX;
+import static org.aeonbits.owner.util.Util.isFeatureDisabled;
+
+import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 import org.aeonbits.owner.Config.DefaultValue;
 import org.aeonbits.owner.Config.EncryptedValue;
 import org.aeonbits.owner.Config.Key;
+import org.aeonbits.owner.Config.Prefix;
 
-import java.lang.reflect.Method;
-import java.util.Properties;
+class PropertiesMapper implements Serializable {
 
-/**
- * Maps methods to properties keys and defaultValues. Maps a class to default property values.
- *
- * @author Luigi R. Viggiano
- */
-final class PropertiesMapper {
+    private static final long serialVersionUID = 0L;
 
-    /** Don't let anyone instantiate this class */
-    private PropertiesMapper() {}
+    private static class MethodInfo implements Serializable {
 
-    static boolean isEncryptedValue( Method method ) {
-        return ( method.getAnnotation( EncryptedValue.class ) ) != null;
-    }
+        private static final long serialVersionUID = 0L;
 
-    static String key(Method method) {
-        Key key = method.getAnnotation(Key.class);
-        return (key == null) ? method.getName() : key.value();
-    }
+        private String key;
+        private String prefix;
+        private String originalKey;
+        private String defaultValue;
+        private boolean isEncryptedValue;
 
-    static String defaultValue(Method method) {
-        DefaultValue defaultValue = method.getAnnotation(DefaultValue.class);
-        return defaultValue != null ? defaultValue.value() : null;
-    }
+        private MethodInfo(Prefix prefixAnnotation, Method method) {
 
-    static void defaults(Properties properties, Class<? extends Config> clazz) {
-        Method[] methods = clazz.getMethods();
-        for (Method method : methods) {
-            String key = key(method);
-            String value = defaultValue(method);
-            if (value != null)
-                properties.put(key, value);
+            DefaultValue defaultAnnotation = method.getAnnotation(DefaultValue.class);
+            defaultValue = defaultAnnotation == null ? null : defaultAnnotation.value();
+
+            Key keyAnnotation = method.getAnnotation(Key.class);
+            originalKey = keyAnnotation == null ? method.getName() : keyAnnotation.value();
+
+            prefix = "";
+            if (prefixAnnotation != null && !isFeatureDisabled(method, PREFIX)) {
+                prefix = prefixAnnotation.value();
+            }
+
+            key = prefix + originalKey;
+
+            isEncryptedValue = method.getAnnotation(EncryptedValue.class) != null;
+        }
+
+        private boolean existsDefault() {
+            return defaultValue != null;
         }
     }
 
+    private Map<String, MethodInfo> methods;
+
+    private PropertiesMapper(Map<String, MethodInfo> methods) {
+        this.methods = methods;
+    }
+
+    boolean isEncryptedValue(Method method) {
+        return methods.get(method.toString()).isEncryptedValue;
+    }
+
+    String key(Method method) {
+        return methods.get(method.toString()).key;
+    }
+
+    void applyDefaults(Properties properties, Class<?> clazz) {
+        Method[] clazzMethods = clazz.getMethods();
+        for (Method method : clazzMethods) {
+            MethodInfo info = methods.get(method.toString());
+            if (info.existsDefault()) {
+                properties.put(info.key, info.defaultValue);
+            }
+        }
+    }
+
+    static Builder builder() {
+        return new Builder();
+    }
+
+    static class Builder {
+
+        private Map<String, MethodInfo> methods;
+
+        private Builder() {
+            methods = new HashMap<String, MethodInfo>();
+        }
+
+        Builder apply(Class<?> clazz) {
+            Prefix prefixAnnotation = clazz.getAnnotation(Prefix.class);
+            for (Method method : clazz.getMethods()) {
+                methods.put(method.toString(), new MethodInfo(prefixAnnotation, method));
+            }
+            return this;
+        }
+
+        PropertiesMapper build() {
+            return new PropertiesMapper(Collections.unmodifiableMap(methods));
+        }
+    }
 }

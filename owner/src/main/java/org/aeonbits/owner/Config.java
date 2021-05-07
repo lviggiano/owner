@@ -282,7 +282,8 @@ public interface Config extends Serializable {
      */
     enum DisableableFeature {
         VARIABLE_EXPANSION,
-        PARAMETER_FORMATTING
+        PARAMETER_FORMATTING,
+        PREFIX
     }
 
     /**
@@ -365,6 +366,16 @@ public interface Config extends Serializable {
     @Documented
     @interface PreprocessorClasses {
         Class<? extends Preprocessor>[] value();
+    }
+
+    /**
+     * Specifies simple <code>{@link String}</code> as prefix to properties names.
+     */
+    @Retention(RUNTIME)
+    @Target({TYPE})
+    @Documented
+    @interface Prefix {
+        String value();
     }
 
 }

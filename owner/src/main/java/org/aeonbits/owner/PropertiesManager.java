@@ -29,7 +29,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import static java.util.Collections.synchronizedList;
 import static org.aeonbits.owner.Config.LoadType.FIRST;
-import static org.aeonbits.owner.PropertiesMapper.defaults;
 import static org.aeonbits.owner.util.Util.*;
 
 /**
@@ -38,6 +37,9 @@ import static org.aeonbits.owner.util.Util.*;
  * @author Luigi R. Viggiano
  */
 class PropertiesManager implements Reloadable, Accessible, Mutable {
+
+    private static final long serialVersionUID = 0L;
+
     private final Class<? extends Config> clazz;
     private final Map<?, ?>[] imports;
     private final Properties properties;
@@ -64,6 +66,8 @@ class PropertiesManager implements Reloadable, Accessible, Mutable {
      * Reflection is slow.
      */
     private Map<Method, Decryptor> encryptedKeys = new HashMap<Method, Decryptor>();
+    
+    private PropertiesMapper propertiesMapper;
 
     final List<PropertyChangeListener> propertyChangeListeners = synchronizedList(
             new LinkedList<PropertyChangeListener>() {
@@ -90,9 +94,14 @@ class PropertiesManager implements Reloadable, Accessible, Mutable {
         ConfigURIFactory urlFactory = new ConfigURIFactory(clazz.getClassLoader(), expander);
         uris = toURIs(clazz.getAnnotation(Sources.class), urlFactory);
 
+        PropertiesMapper.Builder builder = PropertiesMapper.builder().apply(clazz);
+
         for (Class<?> inter : clazz.getInterfaces()) {
             this.uris.addAll(toURIs(inter.getAnnotation(Sources.class), urlFactory));
+            builder.apply(inter);
         }
+
+        propertiesMapper = builder.build();
 
         LoadPolicy loadPolicy = clazz.getAnnotation(LoadPolicy.class);
         if (loadPolicy == null) {
@@ -141,7 +150,7 @@ class PropertiesManager implements Reloadable, Accessible, Mutable {
         // Reflection is slow, so we will cache all methods with EncryptedValue annotation.
         Method[] methods = clazz.getMethods();
         for (Method method : methods) {
-            if (PropertiesMapper.isEncryptedValue(method)) {
+            if (propertiesMapper.isEncryptedValue(method)) {
                 EncryptedValue encriptedKey = method.getAnnotation(EncryptedValue.class);
                 decryptorClazz = encriptedKey.value();
                 if (decryptorClazz != IdentityDecryptor.class) {
@@ -151,6 +160,10 @@ class PropertiesManager implements Reloadable, Accessible, Mutable {
                 }
             }
         }
+    }
+
+    PropertiesMapper propertiesMapper() {
+        return propertiesMapper;
     }
 
     /**
@@ -208,7 +221,7 @@ class PropertiesManager implements Reloadable, Accessible, Mutable {
     private Properties load(Properties props) {
         try {
             loading = true;
-            defaults(props, clazz);
+            propertiesMapper.applyDefaults(props, clazz);
             Properties loadedFromFile = doLoad();
             merge(props, loadedFromFile);
             merge(props, reverse(imports));
