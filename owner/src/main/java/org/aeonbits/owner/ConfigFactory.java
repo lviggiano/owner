@@ -67,6 +67,8 @@ public final class ConfigFactory {
             for( Object key : map.keySet() ){
                 if( key == null || map.get(key) == null){
                     throw new IllegalArgumentException(String.format("An import contains a null value for key: '%s'", key));
+                } else if (!(map.get(key) instanceof String)){
+                    throw new IllegalArgumentException(String.format("An import contains a non-string value for key: '%s'", key));
                 }
             }
         }
