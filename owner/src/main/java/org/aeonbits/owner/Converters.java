@@ -9,6 +9,7 @@
 package org.aeonbits.owner;
 
 import org.aeonbits.owner.Config.ConverterClass;
+import org.aeonbits.owner.Config.CollectionConverterClass;
 
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
@@ -60,6 +61,17 @@ enum Converters {
             }
 
             return result;
+        }
+    },
+
+    METHOD_WITH_COLLECTION_CONVERTER_CLASS_ANNOTATION {
+        @Override
+        Object tryConvert(Method targetMethod, Class<?> targetType, String text) {
+            CollectionConverterClass annotation = targetMethod.getAnnotation(CollectionConverterClass.class);
+            if (annotation == null) return SKIP;
+
+            Class<? extends Converter> converterClass = annotation.value();
+            return convertWithConverterClass(targetMethod, text, converterClass);
         }
     },
 

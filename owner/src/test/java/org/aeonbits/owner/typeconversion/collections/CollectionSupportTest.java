@@ -8,8 +8,11 @@
 
 package org.aeonbits.owner.typeconversion.collections;
 
+import java.lang.reflect.Method;
+import org.aeonbits.owner.Config.CollectionConverterClass;
 import org.aeonbits.owner.Config;
 import org.aeonbits.owner.ConfigFactory;
+import org.aeonbits.owner.Converter;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,12 +64,31 @@ public class CollectionSupportTest {
 
         @DefaultValue(INTEGERS)
         CollectionWithoutDefaultConstructor<Integer> badCollection();
+
+        @CollectionConverterClass(CollectionWithoutDefaultConstructorConverter.class)
+        @DefaultValue(COLORS)
+        CollectionWithoutDefaultConstructor<String> collectionConverterClassCollection();
     }
 
-    static class CollectionWithoutDefaultConstructor<E> extends ArrayList<E> {
+    static public class CollectionWithoutDefaultConstructor<E> extends ArrayList<E> {
         public CollectionWithoutDefaultConstructor(int size) {
             super(size);
         }
+    }
+
+    static public class CollectionWithoutDefaultConstructorConverter implements Converter<CollectionWithoutDefaultConstructor<String>> {
+
+        @Override
+        public CollectionWithoutDefaultConstructor<String> convert(Method method, String input) {
+            final String[] inputs = input.split(",");
+            final CollectionWithoutDefaultConstructor<String> collection =
+                    new CollectionWithoutDefaultConstructor<String>(inputs.length);
+            for (String value : inputs) {
+                collection.add(value);
+            }
+            return collection;
+        }
+
     }
 
     @Before
@@ -116,5 +138,9 @@ public class CollectionSupportTest {
         assertEquals(Arrays.asList("1", "2", "3"), cfg.rawCollection());
     }
 
+    @Test
+    public void itShouldWorkWithCollectionConverterClass() throws Exception {
+        assertEquals(Arrays.asList("pink", "black"), cfg.collectionConverterClassCollection());
+    }
 }
 

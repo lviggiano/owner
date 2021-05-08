@@ -297,6 +297,48 @@ To see the complete test cases supported by owner see [ConverterClassTest] on Gi
 
   [ConverterClassTest]: https://github.com/lviggiano/owner/blob/master/owner/src/test/java/org/aeonbits/owner/typeconversion/ConverterClassTest.java
 
+The @CollectionConverterClass annotation
+------------------------------
+
+For cases when user wants to override the default collection creation (for example to provide custom implementation of Collection
+without exposing its type in the interface),
+OWNER provides the
+[`@CollectionConverterClass`](http://owner.aeonbits.org/apidocs/latest/org/aeonbits/owner/Config.CollectionConverterClass.html)
+annotation that allows user to specify a fully customized conversion logic implementing the
+[`Converter<? implements Collection>`](http://owner.aeonbits.org/apidocs/latest/org/aeonbits/owner/Converter.html) interface.
+
+```java
+interface MyConfig extends Config {
+    @DefaultValue(
+      "google.com, yahoo.com:8080, owner.aeonbits.org:4000")
+    @CollectionConverterClass(CollectionServerConverter.class)
+    List<Server> servers();
+}
+
+public class CollectionServerConverter
+            implements Converter<List<Server>> {
+    public List<Server> convert(Method targetMethod, String text) {
+        String[] split = text.split(",", -1);
+        ServerConverter converter = new ServerConverter();
+        List<Server> list = new ArrayList<Server>(split.length);
+        for (String server : split) {
+            list.add(converter.convert(targetMethod, server.trim());
+        }
+        return Collection.unmodifiableList(list);
+    }
+}
+
+MyConfig cfg = ConfigFactory.create(MyConfig.class);
+List<Server> ss = cfg.servers(); //immutable list
+```
+
+In the above example, the converter is fully responsible for the whole process, including proper
+handling of possible @ClassConverter, @Separator and @TokenizerClass.
+
+To see the example of simple handling of these in test cases see [CollectionConverterClassTest] on GitHub.
+
+  [CollectionConverterClassTest]: https://github.com/lviggiano/owner/blob/master/owner/src/test/java/org/aeonbits/owner/typeconversion/CollectionConverterClassTest.java
+
 All the types supported by OWNER
 --------------------------------
 
