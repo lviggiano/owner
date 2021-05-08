@@ -73,9 +73,10 @@ class StrSubstitutor implements Serializable {
         Matcher m = PATTERN.matcher(source);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
-            String var = m.group(1);
-            String value = values.getProperty(var);
-            String replacement = (value != null) ? replace(value) : "";
+            String[] var = m.group(1).split(":");
+            String value = values.getProperty(var[0]);
+            String replacement = (value != null) ? replace(value) :
+                    var.length > 1 ? var[1] : ""; // Otherwise try to extract a default value
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(sb);

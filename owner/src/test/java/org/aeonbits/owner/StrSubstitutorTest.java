@@ -39,6 +39,26 @@ public class StrSubstitutorTest {
     }
 
     @Test
+    public void shouldApplyDefaultValues() {
+        Properties values = new Properties();
+        String templateString = "The ${animal:wolf} jumped over the ${target:sheep}.";
+        StrSubstitutor sub = new StrSubstitutor(values);
+        String resolvedString = sub.replace(templateString);
+        assertEquals("The wolf jumped over the sheep.", resolvedString);
+    }
+
+    @Test
+    public void shouldOverrideDefaultValues() {
+        Properties values = new Properties();
+        values.setProperty("animal", "quick brown fox");
+        values.setProperty("target", "lazy dog");
+        String templateString = "The ${animal:wolf} jumped over the ${target:sheep}.";
+        StrSubstitutor sub = new StrSubstitutor(values);
+        String resolvedString = sub.replace(templateString);
+        assertEquals("The quick brown fox jumped over the lazy dog.", resolvedString);
+    }
+
+    @Test
     public void shouldReplaceVariablesHavingBackslashes() {
         Properties values = new Properties();
         values.setProperty("animal", "quick\\brown\\fox");
